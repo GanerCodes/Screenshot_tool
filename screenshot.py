@@ -13,9 +13,11 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
+from xnotipy.xnotipy import Notification
+
 chdir(dirname := dirname(__file__))
 
-capture_directory = "/home/ganer/Documents/ScreenCapture/"
+capture_directory = "/home/ganer/Media/ScreenCapture/"
 copy_mode = "url"
 
 priv = load(open("config.json", 'r'))
@@ -27,7 +29,7 @@ mode = "image" if len(argv) < 2 else argv[1]
 upload = True if len(argv) < 3 else argv[2].lower() != "false"
 
 characters = ascii_letters + digits
-make_name = lambda: ''.join(map(lambda x: choice(characters), range(16)))
+make_name = lambda: ''.join(map(lambda _: choice(characters), range(16)))
 
 proc_list, file_loc = [], None
 
@@ -35,7 +37,8 @@ if not isdir(capture_directory):
     makedirs(capture_directory)
 
 check_comp = lambda: Popen(["qdbus", "org.kde.KWin", "/Compositor", "org.kde.kwin.Compositing.active"], stdout = PIPE).communicate()[0].decode().strip() != "false"
-toggle_comp = lambda: Popen(["qdbus", "org.kde.kglobalaccel", "/component/kwin", "invokeShortcut", "Suspend Compositing"]).wait()
+# toggle_comp = lambda: Popen(["qdbus", "org.kde.kglobalaccel", "/component/kwin", "invokeShortcut", "Suspend Compositing"]).wait()
+toggle_comp = lambda: 0
 (inital_comp := check_comp()) or toggle_comp()
 
 class CustomWindow(QMainWindow):
@@ -128,6 +131,8 @@ class CustomWindow(QMainWindow):
                 p.wait()
                 self.showMinimized()
                 self.keyPressEvent(None, force_esc = True)
+            
+            file_loc = file_loc.replace('//', '/')
 
         return super().mouseReleaseEvent(e)
     
@@ -170,6 +175,9 @@ class CustomWindow(QMainWindow):
                         
                         QGuiApplication.clipboard().setText(short_url)
                 
+                Notification(f"Copy path to clipboard", cmd=(
+                    lambda: Popen(f"echo {file_loc} | xclip -selection clipboard", shell=True)
+                )).background_run()
                 Popen(["paplay", f"{dirname}/bell.ogg"])
                         
             self.finish()
@@ -179,5 +187,7 @@ window = CustomWindow()
 window.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
 window.setAttribute(Qt.WA_NoSystemBackground, True)
 window.setAttribute(Qt.WA_TranslucentBackground, True)
+if not inital_comp and mode != "video":
+    window.setAttribute(Qt.WA_PaintOnScreen, True)
 window.show()
 app.exec_()
