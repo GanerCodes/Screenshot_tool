@@ -176,7 +176,10 @@ class CustomWindow(QMainWindow):
                         QGuiApplication.clipboard().setText(short_url)
                 
                 Notification(f"Copy path to clipboard", cmd=(
-                    lambda: Popen(f"echo {file_loc} | xclip -selection clipboard", shell=True)
+                    lambda: [
+                        Popen(f"echo {file_loc} | xclip -selection clipboard", shell=True),
+                        Notification("Copied!", time=1).run()
+                    ]
                 )).background_run()
                 Popen(["paplay", f"{dirname}/bell.ogg"])
                         
