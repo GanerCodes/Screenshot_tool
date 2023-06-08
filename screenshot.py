@@ -36,10 +36,8 @@ proc_list, file_loc = [], None
 if not isdir(capture_directory):
     makedirs(capture_directory)
 
-check_comp = lambda: Popen(["qdbus", "org.kde.KWin", "/Compositor", "org.kde.kwin.Compositing.active"], stdout = PIPE).communicate()[0].decode().strip() != "false"
-# toggle_comp = lambda: Popen(["qdbus", "org.kde.kglobalaccel", "/component/kwin", "invokeShortcut", "Suspend Compositing"]).wait()
-toggle_comp = lambda: 0
-(inital_comp := check_comp()) or toggle_comp()
+check_comp = lambda: Popen(["qdbus", "org.kde.KWin", "/Compositor", "org.kde.kwin.Compositing.active"], stdout=PIPE).communicate()[0].decode().strip() != "false"
+inital_comp = check_comp()
 
 class CustomWindow(QMainWindow):
     def __init__(self):
@@ -51,12 +49,6 @@ class CustomWindow(QMainWindow):
         self.disable_esc = False
     
     def finish(self):
-        not inital_comp and check_comp() and toggle_comp()
-        
-        # clipboard = QGuiApplication.clipboard()
-        # event = QtCore.QEvent(QEvent.Clipboard)
-        # QApplication.sendEvent(clipboard, event)
-        
         # Pain
         with open(fName := f"/tmp/{make_name()}", 'w') as f:
             f.write(QGuiApplication.clipboard().text())
@@ -89,6 +81,7 @@ class CustomWindow(QMainWindow):
         painter.drawRect(*self.coords)
 
     def mousePressEvent(self, e: QtGui.QMouseEvent):
+        print(f"{e.pos()=}")
         if self.disable_click:
             return
         
@@ -137,6 +130,7 @@ class CustomWindow(QMainWindow):
         return super().mouseReleaseEvent(e)
     
     def mouseMoveEvent(self, e: QtGui.QMouseEvent):
+        print(f"{e.pos()=}")
         if self.disable_click:
             return
         
@@ -144,7 +138,7 @@ class CustomWindow(QMainWindow):
         self.update()
         return super().mouseMoveEvent(e)
     
-    def keyPressEvent(self, e: QtGui.QKeyEvent, force_esc = False):
+    def keyPressEvent(self, e: QtGui.QKeyEvent, force_esc=False):
         if not self.disable_esc and (force_esc or e.key() == Qt.Key.Key_Escape):
             self.disable_esc = True
             self.showMinimized()
@@ -178,16 +172,21 @@ class CustomWindow(QMainWindow):
                 Notification(f"Copy path to clipboard", cmd=(
                     lambda: [
                         Popen(f"echo {file_loc} | xclip -selection clipboard", shell=True),
-                        Notification("Copied!", time=1).run()
-                    ]
+                        Notification("Copied path!", time=1).run()]
+                )).background_run()
+                Notification(f"Copy image to clipboard", cmd=(
+                    lambda: [
+                        Popen(f"xclip -selection clipboard -t image/png -i {file_loc}", shell=True),
+                        Notification("Copied image!", time=1).run()]
                 )).background_run()
                 Popen(["paplay", f"{dirname}/bell.ogg"])
+                Notification.exit(10)
                         
             self.finish()
 
 app = QApplication([])
 window = CustomWindow()
-window.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+window.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.X11BypassWindowManagerHint)
 window.setAttribute(Qt.WA_NoSystemBackground, True)
 window.setAttribute(Qt.WA_TranslucentBackground, True)
 if not inital_comp and mode != "video":
