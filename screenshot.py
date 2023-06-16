@@ -36,9 +36,6 @@ proc_list, file_loc = [], None
 if not isdir(capture_directory):
     makedirs(capture_directory)
 
-check_comp = lambda: Popen(["qdbus", "org.kde.KWin", "/Compositor", "org.kde.kwin.Compositing.active"], stdout=PIPE).communicate()[0].decode().strip() != "false"
-inital_comp = check_comp()
-
 class CustomWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -169,16 +166,22 @@ class CustomWindow(QMainWindow):
                         
                         QGuiApplication.clipboard().setText(short_url)
                 
-                Notification(f"Copy path to clipboard", cmd=(
+                Notification(f"Copy OCR to clipboard", cmd=(
                     lambda: [
-                        Popen(f"echo {file_loc} | xclip -selection clipboard", shell=True),
-                        Notification("Copied path!", time=1).run()]
+                        Popen(f"tesseract {file_loc} stdout | xclip -selection clipboard", shell=True),
+                        Notification("Copied OCR!", time=1).run()]
                 )).background_run()
                 Notification(f"Copy image to clipboard", cmd=(
                     lambda: [
                         Popen(f"xclip -selection clipboard -t image/png -i {file_loc}", shell=True),
                         Notification("Copied image!", time=1).run()]
                 )).background_run()
+                Notification(f"Copy path to clipboard", cmd=(
+                    lambda: [
+                        Popen(f"echo {file_loc} | xclip -selection clipboard", shell=True),
+                        Notification("Copied path!", time=1).run()]
+                )).background_run()
+                
                 Popen(["paplay", f"{dirname}/bell.ogg"])
                 Notification.exit(10)
                         
@@ -189,7 +192,6 @@ window = CustomWindow()
 window.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.X11BypassWindowManagerHint)
 window.setAttribute(Qt.WA_NoSystemBackground, True)
 window.setAttribute(Qt.WA_TranslucentBackground, True)
-if not inital_comp and mode != "video":
-    window.setAttribute(Qt.WA_PaintOnScreen, True)
+window.setAttribute(Qt.WA_PaintOnScreen, True)
 window.show()
 app.exec_()
